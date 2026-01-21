@@ -9,4 +9,15 @@ CONFIG = {
     "WEB_HOST": os.environ.get("WEB_HOST", "0.0.0.0"),
     "WEB_PORT": int(os.environ.get("WEB_PORT", "5000")),
     "DEBUG": os.environ.get("DEBUG", "False").lower() == "true",
+    "CAMERA_INDEX": int(os.environ.get("CAMERA_INDEX", "0")),
+    "EXPECTED_LABEL": os.environ.get("EXPECTED_LABEL", "cat"),
+    "ANALYZER_MODEL_PATH": os.environ.get(
+        "ANALYZER_MODEL_PATH", "yolo_files/yolov3.weights"
+    ),
+    "ANALYZER_CONFIG_PATH": os.environ.get(
+        "ANALYZER_CONFIG_PATH", "yolo_files/yolov3.cfg"
+    ),
+    "ANALYZER_CLASSES_PATH": os.environ.get(
+        "ANALYZER_CLASSES_PATH", "yolo_files/coco.names"
+    ),
 }
