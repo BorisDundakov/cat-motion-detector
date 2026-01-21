@@ -6,3 +6,14 @@ requests
 # (13.x uses the older, stable API). If you prefer the newer v20+ API,
 # set a different constraint and adapt the code.
 python-telegram-bot>=13.0,<14.0
+
+
+# Optional / recommended utilities:
+# - python-dotenv: load env vars from a .env file locally
+# - click: add a CLI to main.py easily
+# - imageio-ffmpeg: better ffmpeg support when writing/reading video files
+# - pytest: for writing tests
+python-dotenv>=1.0.0
+click>=8.0
+imageio-ffmpeg>=0.4.7
+pytest>=7.0
