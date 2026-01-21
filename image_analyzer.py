@@ -1,15 +1,23 @@
 import cv2
+import numpy as np
 import os
 import datetime
 
 
 class ImageAnalyzer:
     """YOLO-based image analyzer for detecting cats in images."""
-    
-    def __init__(self, model_path=None, config_path=None, classes_path=None, confidence_threshold=0.5, nms_threshold=0.4):
+
+    def __init__(
+        self,
+        model_path=None,
+        config_path=None,
+        classes_path=None,
+        confidence_threshold=0.5,
+        nms_threshold=0.4,
+    ):
         """
         Initialize the ImageAnalyzer with YOLO model.
-        
+
         Args:
             model_path: Path to YOLO weights file
             config_path: Path to YOLO config file
@@ -40,38 +48,49 @@ class ImageAnalyzer:
     def detect_objects(self, image_path):
         """
         Detect cats in an image using YOLO.
-        
+
         Args:
-            image_path: Path to the image file
-            
+            image_path: Path to the image file or numpy array (image data)
+
         Returns:
             List of dictionaries containing detection results with label, confidence, and bounding box
         """
-        img = cv2.imread(image_path)
-        if img is None:
+        # Accept either a file path or a numpy ndarray
+        if isinstance(image_path, np.ndarray):
+            img = image_path
+        elif isinstance(image_path, str):
+            img = cv2.imread(image_path)
+            if img is None:
+                return []
+        else:
+            # Invalid input type
             return []
 
         return self._detect_in_image(img)
-    
+
     def _detect_in_image(self, img):
         """
         Internal method to detect cats in a loaded image.
-        
+
         Args:
             img: OpenCV image (numpy array)
-            
+
         Returns:
             List of dictionaries containing detection results
         """
         height, width = img.shape[:2]
 
         # Prepare the image for YOLO
-        blob = cv2.dnn.blobFromImage(img, 1 / 255.0, (416, 416), swapRB=True, crop=False)
+        blob = cv2.dnn.blobFromImage(
+            img, 1 / 255.0, (416, 416), swapRB=True, crop=False
+        )
         self.net.setInput(blob)
 
         # Get YOLO output layer names
         layer_names = self.net.getLayerNames()
-        output_layers = [layer_names[i - 1] for i in self.net.getUnconnectedOutLayers().flatten()]
+        output_layers = [
+            layer_names[i - 1] for i in self.net.getUnconnectedOutLayers().flatten()
+        ]
 
         # Perform forward pass
         detections = self.net.forward(output_layers)
@@ -80,7 +99,7 @@ class ImageAnalyzer:
         boxes = []
         confidences = []
         class_ids = []
-        
+
         for output in detections:
             for detection in output:
                 scores = detection[5:]
@@ -94,10 +113,10 @@ class ImageAnalyzer:
                         center_y = int(detection[1] * height)
                         w = int(detection[2] * width)
                         h = int(detection[3] * height)
-                        
+
                         x = int(center_x - w / 2)
                         y = int(center_y - h / 2)
-                        
+
                         boxes.append([x, y, w, h])
                         confidences.append(float(confidence))
                         class_ids.append(class_id)
@@ -105,46 +124,54 @@ class ImageAnalyzer:
         # Apply Non-Maximum Suppression to remove overlapping boxes
         results = []
         if boxes:
-            indices = cv2.dnn.NMSBoxes(boxes, confidences, self.confidence_threshold, self.nms_threshold)
+            indices = cv2.dnn.NMSBoxes(
+                boxes, confidences, self.confidence_threshold, self.nms_threshold
+            )
             if len(indices) > 0:
                 for i in indices.flatten():
-                    results.append({
-                        "label": self.classes[class_ids[i]],
-                        "confidence": confidences[i],
-                        "box": boxes[i]
-                    })
+                    results.append(
+                        {
+                            "label": self.classes[class_ids[i]],
+                            "confidence": confidences[i],
+                            "box": boxes[i],
+                        }
+                    )
 
         return results
-    
+
     def draw_detections(self, img, results, color=(0, 255, 0), thickness=2):
         """
         Draw bounding boxes and labels on an image.
-        
+
         Args:
             img: OpenCV image (numpy array)
             results: List of detection results from detect_objects
             color: BGR color tuple for bounding boxes
             thickness: Line thickness for rectangles
-            
+
         Returns:
             Image with drawn bounding boxes
         """
         for obj in results:
-            x, y, w, h = obj['box']
+            x, y, w, h = obj["box"]
             cv2.rectangle(img, (x, y), (x + w, y + h), color, thickness)
             label = f"{obj['label']} {obj['confidence']:.2f}"
-            cv2.putText(img, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, thickness)
+            cv2.putText(
+                img, label, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, thickness
+            )
         return img
-    
-    def show_and_save_cat_detection(self, image_path, notification_dir="notification_iamges", show_image=True):
+
+    def show_and_save_cat_detection(
+        self, image_path, notification_dir="notification_iamges", show_image=True
+    ):
         """
         Detects cats, draws bounding boxes, optionally visualizes, and saves the image with a timestamped filename if a cat is detected.
-        
+
         Args:
             image_path: Path to the image file
             notification_dir: Directory to save detected cat images
             show_image: Whether to display the image with detections
-            
+
         Returns:
             Tuple of (success: bool, save_path: str or None, num_cats: int)
         """
@@ -155,7 +182,7 @@ class ImageAnalyzer:
 
         results = self._detect_in_image(img)
         num_cats = len(results)
-        
+
         if not results:
             print("No cat detected.")
             return False, None, 0
