@@ -20,4 +20,5 @@ CONFIG = {
     "ANALYZER_CLASSES_PATH": os.environ.get(
         "ANALYZER_CLASSES_PATH", "yolo_files/coco.names"
     ),
+    "TARGET_OBJECTS": os.environ.get("TARGET_OBJECTS", "cat,person"),
 }

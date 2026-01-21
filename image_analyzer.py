@@ -2,10 +2,11 @@ import cv2
 import numpy as np
 import os
 import datetime
+from config import CONFIG
 
 
 class ImageAnalyzer:
-    """YOLO-based image analyzer for detecting cats in images."""
+    """YOLO-based image analyzer for detecting objects in images."""
 
     def __init__(
         self,
@@ -14,6 +15,7 @@ class ImageAnalyzer:
         classes_path=None,
         confidence_threshold=0.5,
         nms_threshold=0.4,
+        target_objects=None,
     ):
         """
         Initialize the ImageAnalyzer with YOLO model.
@@ -24,12 +26,24 @@ class ImageAnalyzer:
             classes_path: Path to class names file
             confidence_threshold: Minimum confidence for detection (0.0 to 1.0)
             nms_threshold: Non-maximum suppression threshold
+            target_objects: Object(s) to detect. Can be a string or list of strings (default: from config, "cat,person")
         """
         self.model_path = model_path or "yolo_files/yolov3.weights"
         self.config_path = config_path or "yolo_files/yolov3.cfg"
         self.classes_path = classes_path or "yolo_files/coco.names"
         self.confidence_threshold = confidence_threshold
         self.nms_threshold = nms_threshold
+        
+        # Use target_objects from config if not provided
+        if target_objects is None:
+            target_objects = CONFIG.get("TARGET_OBJECTS", "cat,person")
+        
+        # Convert target_objects to a list for uniform handling
+        if isinstance(target_objects, str):
+            # Handle comma-separated strings
+            self.target_objects = [obj.strip() for obj in target_objects.split(",")]
+        else:
+            self.target_objects = target_objects
 
         # Load YOLO model
         try:
@@ -70,7 +84,7 @@ class ImageAnalyzer:
 
     def _detect_in_image(self, img):
         """
-        Internal method to detect cats in a loaded image.
+        Internal method to detect target objects in a loaded image.
 
         Args:
             img: OpenCV image (numpy array)
@@ -107,8 +121,8 @@ class ImageAnalyzer:
                 confidence = scores[class_id]
 
                 if confidence > self.confidence_threshold:
-                    # Check if the detected object is a cat
-                    if self.classes and self.classes[class_id] == "cat":
+                    # Check if the detected object is in our target list
+                    if self.classes and self.classes[class_id] in self.target_objects:
                         center_x = int(detection[0] * width)
                         center_y = int(detection[1] * height)
                         w = int(detection[2] * width)
