@@ -1,22 +1,70 @@
 import time
 import os
+import threading
+import signal
+import sys
+from queue import Queue
 from frame_producer import FrameProducer
 from motion_detector import MotionDetector
 from notifications import TelegramNotifier
 from image_analyzer import ImageAnalyzer
 from utils import save_frame
 from config import CONFIG
+from web_server import app, socketio, emit_motion_event
 import logging
 
 logger = logging.getLogger(__name__)
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
+# Global reference to detector for cleanup
+detector_instance = None
+frame_producer_instance = None
+
+
+def motion_detection_worker(event_queue):
+    """Worker function that runs motion detection in a separate thread."""
+    global detector_instance, frame_producer_instance
+    
+    detector = MotionDetector(
+        frame_producer=frame_producer_instance,
+        sensitivity=CONFIG.get("SENSITIVITY", 25),
+        min_area=CONFIG.get("MIN_AREA", 500),
+    )
+    detector_instance = detector
+    
+    print("Motion detector started in background thread")
+    
+    try:
+        for event in detector.run():
+            # Put the event in the queue for the main thread to process
+            event_queue.put(event)
+    except Exception as e:
+        print(f"Error in motion detection: {e}")
+
 
 def main():
+    global frame_producer_instance
+    
     # Initialize frame producer
     frame_producer = FrameProducer(camera_index=CONFIG.get("CAMERA_INDEX", 0))
     frame_producer.start()
+    frame_producer_instance = frame_producer
+    
+    # Configure the web app to use this frame producer
+    app.config['FRAME_PRODUCER'] = frame_producer
+    
+    # Start web server in a separate thread
+    web_host = CONFIG.get("WEB_HOST", "0.0.0.0")
+    web_port = CONFIG.get("WEB_PORT", 5000)
+    
+    def run_web_server():
+        print(f"Starting web server at http://{web_host}:{web_port}")
+        socketio.run(app, host=web_host, port=web_port, debug=False, allow_unsafe_werkzeug=True)
+    
+    web_thread = threading.Thread(target=run_web_server, daemon=True)
+    web_thread.start()
+    
     # wait briefly for first frame to be captured
     time.sleep(0.5)
 
@@ -114,18 +162,35 @@ def main():
                     logger.info(
                         "Telegram notifier not configured; skipping notification."
                     )
+                
+                # Emit event to web interface
+                web_event = {
+                    'timestamp': event['timestamp'],
+                    'frame_path': frame_path_to_send,
+                }
+                emit_motion_event(web_event)
             else:
                 logger.info("No expected object detected; not saving or notifying.")
 
             time.sleep(1)
     except KeyboardInterrupt:
-        print("Stopping.")
+        print("\nStopping...")
     finally:
         try:
-            frame_producer.stop()
+            # Cleanup: stop the motion detector and frame producer
+            print("Cleaning up resources...")
+            if detector_instance:
+                detector_instance.running = False
+            if frame_producer_instance:
+                frame_producer_instance.stop()
+            
+            # Give threads time to cleanup
+            print("Shutdown complete.")
         except Exception:
             pass
+        
 
 
 if __name__ == "__main__":
     main()
+
