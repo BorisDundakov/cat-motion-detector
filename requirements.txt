@@ -1,4 +1,8 @@
+
 opencv-python
 numpy
 requests
-python-telegram-bot==13.17
+# Use a 13.x series constraint so pip picks a compatible 13.* release
+# (13.x uses the older, stable API). If you prefer the newer v20+ API,
+# set a different constraint and adapt the code.
+python-telegram-bot>=13.0,<14.0
