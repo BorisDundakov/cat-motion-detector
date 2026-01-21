@@ -7,5 +7,5 @@ __pycache__/
 .env.*
 *.swp
 .DS_Store
-
+debug_frames/
 frames/
