@@ -59,21 +59,21 @@ class ImageAnalyzer:
             self.classes = []
             print(f"Warning: Classes file not found at {self.classes_path}")
 
-    def detect_objects(self, image_path):
+    def detect_objects(self, image):
         """
-        Detect cats in an image using YOLO.
+        Detect target objects in an image using YOLO.
 
         Args:
-            image_path: Path to the image file or numpy array (image data)
+            image: numpy array (image data) or path to the image file (string)
 
         Returns:
             List of dictionaries containing detection results with label, confidence, and bounding box
         """
         # Accept either a file path or a numpy ndarray
-        if isinstance(image_path, np.ndarray):
-            img = image_path
-        elif isinstance(image_path, str):
-            img = cv2.imread(image_path)
+        if isinstance(image, np.ndarray):
+            img = image
+        elif isinstance(image, str):
+            img = cv2.imread(image)
             if img is None:
                 return []
         else:
@@ -175,41 +175,42 @@ class ImageAnalyzer:
             )
         return img
 
-    def show_and_save_cat_detection(
-        self, image_path, notification_dir="notification_iamges", show_image=True
+    def show_and_save_identified_image(
+        self, image, notification_dir="notification_iamges", show_image=True
     ):
         """
-        Detects cats, draws bounding boxes, optionally visualizes, and saves the image with a timestamped filename if a cat is detected.
+        Detects target objects, draws bounding boxes, optionally visualizes, and saves the image with a timestamped filename if objects are detected.
 
         Args:
-            image_path: Path to the image file
-            notification_dir: Directory to save detected cat images
+            image: numpy array (image data) or path to the image file (string)
+            notification_dir: Directory to save detected images
             show_image: Whether to display the image with detections
 
         Returns:
-            Tuple of (success: bool, save_path: str or None, num_cats: int)
+            Tuple of (success: bool, save_path: str or None, num_objects: int)
         """
-        img = cv2.imread(image_path)
-        if img is None:
-            print(f"Error: Could not read image: {image_path}")
+        # Accept either a file path or a numpy ndarray
+        if isinstance(image, np.ndarray):
+            img = image
+        elif isinstance(image, str):
+            img = cv2.imread(image)
+            if img is None:
+                print(f"Error: Could not read image: {image}")
+                return False, None, 0
+        else:
+            print(f"Error: Invalid image input type")
             return False, None, 0
 
         results = self._detect_in_image(img)
-        num_cats = len(results)
+        num_objects = len(results)
 
         if not results:
-            print("No cat detected.")
+            print("No target objects detected.")
             return False, None, 0
 
         # Draw detections on image
         img = self.draw_detections(img, results)
 
-        # Visualize if requested
-        if show_image:
-            cv2.imshow("Cat Detection", img)
-            print("Image will close automatically after 5 seconds...")
-            cv2.waitKey(5000)
-            cv2.destroyAllWindows()
 
         # Save to notification directory with timestamp
         try:
@@ -217,9 +218,9 @@ class ImageAnalyzer:
             timestamp = datetime.datetime.now().strftime("%y-%m-%d_%H-%M-%S")
             save_path = os.path.join(notification_dir, f"{timestamp}.jpg")
             cv2.imwrite(save_path, img)
-            print(f"Saved detected cat image to: {save_path}")
-            print(f"Number of cats detected: {num_cats}")
-            return True, save_path, num_cats
+            print(f"Saved detected image to: {save_path}")
+            print(f"Number of objects detected: {num_objects}")
+            return True, save_path, num_objects
         except Exception as e:
             print(f"Error saving image: {e}")
-            return False, None, num_cats
+            return False, None, num_objects
