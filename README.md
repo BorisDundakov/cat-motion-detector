@@ -99,27 +99,4 @@ pytest tests/test_motion_detector.py
 # run a single test function
 pytest tests/test_motion_detector.py::test_motion_detector_saves_frames -q
 ```
-
-Troubleshooting
----------------
-
-- Discord notifications not appearing:
-  - Verify `DISCORD_WEBHOOK_URL` is set and valid.
-  - Check application logs for errors when uploading images.
-  - Ensure saved images have filenames starting with `motion_` (the notifier only sends those).
-
-- Camera not opening:
-  - Verify camera index or video path is correct.
-  - If using a physical camera, ensure no other process is using it.
-
-- Permission errors saving frames:
-  - Ensure the process has write permission to `FRAME_DIR`.
-
-Contributing
-------------
-- Please follow the existing code style and add tests for new behaviors.
-- Open an issue or pull request if you want to propose changes.
-
-License
--------
-- (Add your project license here)
+)
