@@ -1,6 +1,7 @@
 import os
 
 CONFIG = {
+    "DISCORD_WEBHOOK_URL": "https://discord.com/api/webhooks/1463507497233944719/MwLFA_v4OHCmhsga_fUrm57XiKx3UexwQwZftRlqIK8ZFDqHROYv9y265StRrtB5Si05",
     "TELEGRAM_TOKEN": os.environ.get("TELEGRAM_TOKEN"),
     "TELEGRAM_CHAT_ID": os.environ.get("TELEGRAM_CHAT_ID"),
     "SENSITIVITY": int(os.environ.get("SENSITIVITY", "25")),
