@@ -1,6 +1,9 @@
 import os
+import json
 
-CONFIG = {
+# Default configuration
+DEFAULT_CONFIG = {
+    "DISCORD_WEBHOOK_URL": "ENTER_WEBHOOK_URL_HERE",
     "TELEGRAM_TOKEN": os.environ.get("TELEGRAM_TOKEN"),
     "TELEGRAM_CHAT_ID": os.environ.get("TELEGRAM_CHAT_ID"),
     "SENSITIVITY": int(os.environ.get("SENSITIVITY", "25")),
@@ -20,5 +23,49 @@ CONFIG = {
     "ANALYZER_CLASSES_PATH": os.environ.get(
         "ANALYZER_CLASSES_PATH", "yolo_files/coco.names"
     ),
-    "TARGET_OBJECTS": os.environ.get("TARGET_OBJECTS", "cat,person"),
+    "TARGET_OBJECTS": os.environ.get("TARGET_OBJECTS", "person"),
 }
+
+# Path to persistent config file (stores user overrides only)
+CONFIG_FILE = "config_settings.json"
+
+
+def load_config():
+    """Load configuration from file if it exists, otherwise use defaults.
+
+    Defaults in DEFAULT_CONFIG remain unchanged. User settings from
+    config_settings.json are merged on top.
+    """
+    config = DEFAULT_CONFIG.copy()
+
+    if os.path.exists(CONFIG_FILE):
+        try:
+            with open(CONFIG_FILE, "r") as f:
+                saved_config = json.load(f)
+                # Merge saved config with defaults (saved values override defaults)
+                config.update(saved_config)
+                print(f"Loaded saved configuration from {CONFIG_FILE}")
+        except Exception as e:
+            print(f"Error loading config file: {e}. Using defaults.")
+
+    return config
+
+
+def save_config(config):
+    """Save current configuration to file.
+
+    This only writes to config_settings.json and never modifies
+    the DEFAULT_CONFIG in this Python file.
+    """
+    try:
+        with open(CONFIG_FILE, "w") as f:
+            json.dump(config, f, indent=4)
+        print(f"Configuration saved to {CONFIG_FILE}")
+        return True
+    except Exception as e:
+        print(f"Error saving config file: {e}")
+        return False
+
+
+# Load configuration on module import
+CONFIG = load_config()

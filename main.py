@@ -85,11 +85,14 @@ def main():
         config_path=CONFIG.get("ANALYZER_CONFIG_PATH"),
         classes_path=CONFIG.get("ANALYZER_CLASSES_PATH"),
     )
-    expected_label = CONFIG.get("TARGET_OBJECTS")
 
     print("Starting motion detector. Press Ctrl+C to stop.")
     try:
         for event in detector.run():
+            # Reload target objects from CONFIG each iteration (allows dynamic updates)
+            target_objects_str = CONFIG.get("TARGET_OBJECTS", "cat")
+            target_objects = [obj.strip() for obj in target_objects_str.split(",")]
+
             logger.info("Received motion event: %s", event.get("timestamp"))
             # Detector yields either a saved path or a raw frame ndarray
             frame = None
@@ -115,13 +118,15 @@ def main():
                 _cv2.imwrite(debug_path, frame)
                 logger.info("DEBUG: Saved frame to %s", debug_path)
 
-            # Analyze the frame (pass ndarray or path)
+            # Analyze the frame (pass ndarray or path directly to ImageAnalyzer)
             target = frame if frame is not None else frame_path
-            logger.info('Analyzing frame for expected label "%s"', expected_label)
+            logger.info(
+                "Analyzing frame for target objects: %s", ", ".join(target_objects)
+            )
             detections = analyzer.detect_objects(target)
             logger.info("Analyzer returned %d detections", len(detections))
 
-            # Check for expected label
+            # Check for any target objects
             if detections:
                 for d in detections:
                     logger.info(
@@ -131,54 +136,61 @@ def main():
                         d.get("box"),
                     )
 
-            # Split expected labels (comma-separated)
-            expected_labels = [label.strip() for label in expected_label.split(",")]
+            # Find matches - any detected object that's in our target list
+            matches = [d for d in detections if d.get("label") in target_objects]
 
-            # compute best non-matching confidence
-            non_matching = [
-                d for d in detections if d.get("label") not in expected_labels
-            ]
-            best_non_match_conf = max(
-                (d.get("confidence", 0.0) for d in non_matching), default=0.0
-            )
-            logger.info("Best non-matching confidence=%.2f", best_non_match_conf)
-            matches = [d for d in detections if d.get("label") in expected_labels]
             if matches:
-                # If detector didn't save the frame, save it now
+                matched_labels = list(set([d.get("label") for d in matches]))
                 logger.info(
-                    'Expected label "%s" matched (%d). Saving/sending.',
-                    expected_label,
+                    "Target objects detected: %s (%d detections). Saving image with detections.",
+                    ", ".join(matched_labels),
                     len(matches),
                 )
-                if frame is not None:
-                    save_dir = CONFIG.get("FRAME_DIR", "frames")
-                    os.makedirs(save_dir, exist_ok=True)
-                    filename = f"motion_{event['timestamp'].replace(':', '-')}.jpg"
-                    saved_path = os.path.join(save_dir, filename)
-                    # write image
-                    import cv2 as _cv2
 
-                    _cv2.imwrite(saved_path, frame)
-                    frame_path_to_send = saved_path
+                # Use ImageAnalyzer to save the image with bounding boxes to frames directory
+                success, saved_path, num_detected = (
+                    analyzer.show_and_save_identified_image(
+                        target,
+                        notification_dir=CONFIG.get("FRAME_DIR", "frames"),
+                        show_image=False,
+                    )
+                )
+
+                if success and saved_path:
+                    # Send the annotated image from frames folder
+                    caption = f"{', '.join(matched_labels)} detected at {event['timestamp']}: {num_detected} object(s)"
+                    if notifier.is_configured():
+                        notifier.send_photo(saved_path, caption=caption)
+                    else:
+                        logger.info(
+                            "Telegram notifier not configured; skipping notification."
+                        )
+
+                    # Emit event to web interface
+                    web_event = {
+                        "timestamp": event["timestamp"],
+                        "frame_path": saved_path,
+                    }
+                    emit_motion_event(web_event)
                 else:
-                    frame_path_to_send = frame_path
-
-                caption = f"{expected_label} detected at {event['timestamp']}: {len(matches)} match(es)"
-                if notifier.is_configured():
-                    notifier.send_photo(frame_path_to_send, caption=caption)
+                    logger.error("Failed to save detected image")
+            else:
+                detected_labels = (
+                    list(set([d.get("label") for d in detections]))
+                    if detections
+                    else []
+                )
+                if detected_labels:
+                    logger.info(
+                        "Motion detected but no target objects found. Detected: %s (looking for: %s)",
+                        ", ".join(detected_labels),
+                        ", ".join(target_objects),
+                    )
                 else:
                     logger.info(
-                        "Telegram notifier not configured; skipping notification."
+                        "Motion detected but no objects recognized by YOLO (looking for: %s)",
+                        ", ".join(target_objects),
                     )
-
-                # Emit event to web interface
-                web_event = {
-                    "timestamp": event["timestamp"],
-                    "frame_path": frame_path_to_send,
-                }
-                emit_motion_event(web_event)
-            else:
-                logger.info("No expected object detected; not saving or notifying.")
 
             time.sleep(1)
     except KeyboardInterrupt:

@@ -1,71 +1,4 @@
 # Motion Detector Project — Team Cat
-Quick start
------------
-
-1. Create a virtual environment and install requirements:
-
-```bash
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-2. (Optional) Set Telegram env vars to enable notifications:
-
-```bash
-export TELEGRAM_TOKEN=your_bot_token
-export TELEGRAM_CHAT_ID=your_chat_id
-```
-
-3. Run the detector:
-
-```bash
-python main.py
-```
-
-Camera Source
--------------
-
-- **File**: [motion_detector.py](motion_detector.py)
-	- **Description**: The camera is opened inside `motion_detector.py` by the
-		`MotionDetector` class using the `camera_index` parameter (default `0`).
-	- **Change camera**: To use a different camera or a video file, edit
-		[main.py](main.py) and instantiate `MotionDetector` with the
-		`camera_index` argument, for example:
-
-```python
-detector = MotionDetector(camera_index=1)
-# or use a video file path by passing an integer or by modifying the class
-```
-
-- **Note**: `main.py` is the entrypoint that creates the `MotionDetector`.
-
-Running tests
--------------
-
-Before running tests, ensure you're in the project root and have a virtual
-environment active with the project requirements installed (see Quick start).
-
-Install test dependencies (if you haven't already):
-
-```bash
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Run the full test suite with `pytest`:
-
-```bash
-pytest
-```
-
-Run a single test file or test function:
-
-```bash
-# run a specific test file
-pytest tests/test_motion_detector.py
-
-# Motion Detector Project — Team Cat
 
 Quick start
 -----------
@@ -78,11 +11,21 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-2. (Optional) Set Telegram env vars to enable notifications:
+2. (Optional) Configure environment variables (recommended for Discord notifications and runtime settings):
 
 ```bash
-export TELEGRAM_TOKEN=your_bot_token
-export TELEGRAM_CHAT_ID=your_chat_id
+# Discord webhook used for notifications (recommended)
+export DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+
+# Optional runtime tuning
+export FRAME_DIR="frames"
+export SENSITIVITY="25"
+export MIN_AREA="500"
+export CAMERA_INDEX="0"       # or path to a video file
+export WEB_HOST="0.0.0.0"
+export WEB_PORT="5000"
+export DEBUG="False"
+export TARGET_OBJECTS="cat,person"
 ```
 
 3. Run the detector:
@@ -91,41 +34,52 @@ export TELEGRAM_CHAT_ID=your_chat_id
 python main.py
 ```
 
+Notes:
+- The application will start a web UI (Socket.IO + Flask) and the motion detector.
+- Provide a valid Discord webhook in `DISCORD_WEBHOOK_URL` if you want image notifications.
+
 Camera Source
 -------------
 
-- **File**: [motion_detector.py](motion_detector.py)
-	- **Description**: The camera or video source is opened inside
-		`motion_detector.py` by the `MotionDetector` class. By default it opens
-		`camera_index=0` (the first attached camera).
-	- **Change camera**: you can pass either a camera index (integer) or a
-		video file path (string) to `MotionDetector`. Edit
-		[main.py](main.py) and instantiate the detector with the desired source. Examples:
+- **File**: `motion_detector.py`
+  - **Description**: The camera or video source is opened inside the `MotionDetector`
+    class using the `camera_index` parameter (default `0`).
+  - **Change camera**: To use a different camera index or a video file, update
+    `main.py` to pass the desired value to `MotionDetector`:
 
 ```python
-# Use an external camera (index 1)
+# Camera index (integer)
 detector = MotionDetector(camera_index=1)
 
-# Use a video file instead of a camera
+# Or use a video file path instead of a camera device
 detector = MotionDetector(camera_index='path/to/video.mp4')
 ```
 
-	- **Use an environment variable**: optionally set `VIDEO_SOURCE` and add a
-		small snippet in `main.py` to interpret it as an int or path:
+- **Using an environment variable**: You can set `VIDEO_SOURCE` and parse it in `main.py`:
 
 ```python
 import os
-
 src = os.environ.get('VIDEO_SOURCE', '0')
 try:
-		camera_index = int(src)
+    camera_index = int(src)
 except ValueError:
-		camera_index = src
-
+    camera_index = src  # treat as path
 detector = MotionDetector(camera_index=camera_index)
 ```
 
-- **Note**: `main.py` is the entrypoint that creates the `MotionDetector`.
+Web UI
+------
+- The web UI is served by Flask + Flask-SocketIO. By default it runs on
+  `WEB_HOST` and `WEB_PORT` from `config.py` (environment variables can override).
+- Motion events are available at the frontend via the Socket.IO event `motion_detected`.
+- Saved motion images are served from the configured `FRAME_DIR` (default: `frames`).
+
+Notifications
+-------------
+- Discord notifications are available via a webhook. Set `DISCORD_WEBHOOK_URL`
+  in the environment (or in your config) before starting the app.
+- The notifier sends only images whose filename starts with `motion_` and includes
+  a short caption with a timestamp.
 
 Running tests
 -------------
@@ -133,22 +87,12 @@ Running tests
 Before running tests, ensure you're in the project root and have a virtual
 environment active with the project requirements installed (see Quick start).
 
-Install test dependencies (if you haven't already):
+Install test dependencies (if any are listed) and run the test suite:
 
 ```bash
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-Run the full test suite with `pytest`:
-
-```bash
+# run all tests
 pytest
-```
 
-Run a single test file or test function:
-
-```bash
 # run a specific test file
 pytest tests/test_motion_detector.py
 
@@ -156,8 +100,26 @@ pytest tests/test_motion_detector.py
 pytest tests/test_motion_detector.py::test_motion_detector_saves_frames -q
 ```
 
-Test output is written to the terminal. The synthetic motion test created for
-the motion detector is at [tests/test_motion_detector.py](tests/test_motion_detector.py).
+Troubleshooting
+---------------
 
+- Discord notifications not appearing:
+  - Verify `DISCORD_WEBHOOK_URL` is set and valid.
+  - Check application logs for errors when uploading images.
+  - Ensure saved images have filenames starting with `motion_` (the notifier only sends those).
 
+- Camera not opening:
+  - Verify camera index or video path is correct.
+  - If using a physical camera, ensure no other process is using it.
 
+- Permission errors saving frames:
+  - Ensure the process has write permission to `FRAME_DIR`.
+
+Contributing
+------------
+- Please follow the existing code style and add tests for new behaviors.
+- Open an issue or pull request if you want to propose changes.
+
+License
+-------
+- (Add your project license here)

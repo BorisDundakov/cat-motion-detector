@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - Cat Motion Detector</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .header {
+            background-color: #2c3e50;
+            color: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .header h1 {
+            margin: 0;
+        }
+        .nav-links {
+            margin-top: 10px;
+        }
+        .nav-links a {
+            color: #3498db;
+            text-decoration: none;
+            margin-right: 15px;
+        }
+        .nav-links a:hover {
+            text-decoration: underline;
+        }
+        .settings-form {
+            background-color: white;
+            padding: 30px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        .form-group input,
+        .form-group select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        .form-group select[multiple] {
+            height: auto;
+        }
+        .form-group small {
+            display: block;
+            color: #7f8c8d;
+            margin-top: 5px;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .message {
+            padding: 10px;
+            border-radius: 3px;
+            margin-bottom: 20px;
+            display: none;
+        }
+        .message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        .section-title:first-of-type {
+            margin-top: 0;
+        }
+        .checkbox-container {
+            border: 1px solid #ddd;
+            border-radius: 3px;
+            padding: 10px;
+            max-height: 300px;
+            overflow-y: auto;
+            background-color: #fafafa;
+        }
+        .checkbox-container.collapsed {
+            max-height: 0;
+            padding: 0;
+            overflow: hidden;
+            border: none;
+        }
+        .checkbox-item {
+            padding: 5px;
+            margin: 2px 0;
+        }
+        .checkbox-item label {
+            font-weight: normal;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+        .checkbox-item input[type="checkbox"] {
+            width: auto;
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        .toggle-btn {
+            background-color: #ecf0f1;
+            color: #2c3e50;
+            padding: 8px 15px;
+            border: 1px solid #bdc3c7;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 10px;
+            width: 100%;
+            text-align: left;
+        }
+        .toggle-btn:hover {
+            background-color: #d5dbdb;
+        }
+        .toggle-btn::after {
+            content: " ▼";
+            float: right;
+        }
+        .toggle-btn.collapsed::after {
+            content: " ▶";
+        }
+        .selected-count {
+            color: #7f8c8d;
+            font-size: 12px;
+            margin-left: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>⚙️ Settings</h1>
+        <div class="nav-links">
+            <a href="/">← Back to Live View</a>
+        </div>
+    </div>
+
+    <div class="message" id="message"></div>
+
+    <div class="settings-form">
+        <form id="configForm">
+            <div class="section-title">Detection Settings</div>
+            
+            <div class="form-group">
+                <label>Target Objects <span class="selected-count" id="selectedCount"></span></label>
+                <button type="button" class="toggle-btn" id="toggleCheckboxes">Select objects to detect</button>
+                <div class="checkbox-container" id="checkboxContainer">
+                    {% for obj in coco_classes %}
+                    <div class="checkbox-item">
+                        <label>
+                            <input type="checkbox" name="TARGET_OBJECTS" value="{{ obj }}" {% if obj in config.TARGET_OBJECTS %}checked{% endif %}>
+                            {{ obj }}
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <small>Select one or more objects to detect and notify about</small>
+            </div>
+
+            <div class="form-group">
+                <label for="SENSITIVITY">Sensitivity</label>
+                <input type="number" id="SENSITIVITY" name="SENSITIVITY" value="{{ config.SENSITIVITY }}" min="1" max="100">
+                <small>Lower = more sensitive (5-15), Higher = less sensitive (25-50). Default: 25</small>
+            </div>
+
+            <div class="form-group">
+                <label for="MIN_AREA">Minimum Area</label>
+                <input type="number" id="MIN_AREA" name="MIN_AREA" value="{{ config.MIN_AREA }}" min="1">
+                <small>Minimum pixel area for motion detection. Default: 500</small>
+            </div>
+
+            <div class="section-title">Camera Settings</div>
+
+            <div class="form-group">
+                <label for="CAMERA_INDEX">Camera Index</label>
+                <input type="number" id="CAMERA_INDEX" name="CAMERA_INDEX" value="{{ config.CAMERA_INDEX }}" min="0" step="1">
+                <small>Camera device index (usually 0 for default camera)</small>
+            </div>
+
+            <div class="section-title">Telegram Notification</div>
+
+            <div class="form-group">
+                <label for="TELEGRAM_TOKEN">Telegram Bot Token</label>
+                <input type="text" id="TELEGRAM_TOKEN" name="TELEGRAM_TOKEN" value="{{ config.TELEGRAM_TOKEN or '' }}">
+                <small>Your Telegram Bot API token (optional)</small>
+            </div>
+
+            <div class="form-group">
+                <label for="TELEGRAM_CHAT_ID">Telegram Chat ID</label>
+                <input type="text" id="TELEGRAM_CHAT_ID" name="TELEGRAM_CHAT_ID" value="{{ config.TELEGRAM_CHAT_ID or '' }}">
+                <small>Your Telegram chat ID to receive notifications (optional)</small>
+            </div>
+
+            <div class="section-title">YOLO Model Configuration</div>
+
+            <div class="form-group">
+                <label for="ANALYZER_MODEL_PATH">Model Path</label>
+                <input type="text" id="ANALYZER_MODEL_PATH" name="ANALYZER_MODEL_PATH" value="{{ config.ANALYZER_MODEL_PATH }}">
+                <small>Path to YOLO weights file</small>
+            </div>
+
+            <div class="form-group">
+                <label for="ANALYZER_CONFIG_PATH">Config Path</label>
+                <input type="text" id="ANALYZER_CONFIG_PATH" name="ANALYZER_CONFIG_PATH" value="{{ config.ANALYZER_CONFIG_PATH }}">
+                <small>Path to YOLO config file</small>
+            </div>
+
+            <div class="form-group">
+                <label for="ANALYZER_CLASSES_PATH">Classes Path</label>
+                <input type="text" id="ANALYZER_CLASSES_PATH" name="ANALYZER_CLASSES_PATH" value="{{ config.ANALYZER_CLASSES_PATH }}">
+                <small>Path to class names file</small>
+            </div>
+
+            <div class="section-title">Storage Settings</div>
+
+            <div class="form-group">
+                <label for="FRAME_DIR">Frame Directory</label>
+                <input type="text" id="FRAME_DIR" name="FRAME_DIR" value="{{ config.FRAME_DIR }}">
+                <small>Directory to save detected motion frames</small>
+            </div>
+
+            <button type="submit" class="btn">Save Settings</button>
+        </form>
+    </div>
+
+    <script>
+        const form = document.getElementById('configForm');
+        const message = document.getElementById('message');
+        const toggleBtn = document.getElementById('toggleCheckboxes');
+        const checkboxContainer = document.getElementById('checkboxContainer');
+        const selectedCount = document.getElementById('selectedCount');
+        const checkboxes = document.querySelectorAll('input[name="TARGET_OBJECTS"]');
+
+        // Toggle checkbox container
+        toggleBtn.addEventListener('click', () => {
+            checkboxContainer.classList.toggle('collapsed');
+            toggleBtn.classList.toggle('collapsed');
+        });
+
+        // Update selected count
+        function updateSelectedCount() {
+            const checked = document.querySelectorAll('input[name="TARGET_OBJECTS"]:checked');
+            selectedCount.textContent = checked.length > 0 ? `(${checked.length} selected)` : '';
+        }
+
+        // Listen to checkbox changes
+        checkboxes.forEach(cb => {
+            cb.addEventListener('change', updateSelectedCount);
+        });
+
+        // Initialize count
+        updateSelectedCount();
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            // Collect form data
+            const formData = new FormData(form);
+            const config = {};
+            
+            // Handle checkboxes for TARGET_OBJECTS
+            const checkedBoxes = document.querySelectorAll('input[name="TARGET_OBJECTS"]:checked');
+            const selectedObjects = Array.from(checkedBoxes).map(cb => cb.value);
+            config['TARGET_OBJECTS'] = selectedObjects.join(',');
+            
+            // Handle other form fields
+            for (let [key, value] of formData.entries()) {
+                if (key !== 'TARGET_OBJECTS') {
+                    config[key] = value;
+                }
+            }
+
+            try {
+                const response = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(config)
+                });
+
+                const result = await response.json();
+
+                if (result.success) {
+                    const message = result.message || 'Settings saved successfully! Redirecting...';
+                    showMessage(message, 'success');
+                    // Redirect to main page after short delay
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } else {
+                    showMessage('Error: ' + result.error, 'error');
+                }
+            } catch (error) {
+                showMessage('Error saving settings: ' + error.message, 'error');
+            }
+        });
+
+        function showMessage(text, type) {
+            message.textContent = text;
+            message.className = 'message ' + type;
+            message.style.display = 'block';
+            
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 5000);
+        }
+    </script>
+</body>
+</html>

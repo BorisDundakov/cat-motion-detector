@@ -1,0 +1,17 @@
+{
+    "DISCORD_WEBHOOK_URL": "https://discord.com/api/webhooks/1463507497233944719/MwLFA_v4OHCmhsga_fUrm57XiKx3UexwQwZftRlqIK8ZFDqHROYv9y265StRrtB5Si05",
+    "TELEGRAM_TOKEN": "",
+    "TELEGRAM_CHAT_ID": "",
+    "SENSITIVITY": 25,
+    "MIN_AREA": 500,
+    "FRAME_DIR": "frames",
+    "WEB_HOST": "0.0.0.0",
+    "WEB_PORT": 5000,
+    "DEBUG": false,
+    "CAMERA_INDEX": 1,
+    "EXPECTED_LABEL": "cat",
+    "ANALYZER_MODEL_PATH": "yolo_files/yolov3.weights",
+    "ANALYZER_CONFIG_PATH": "yolo_files/yolov3.cfg",
+    "ANALYZER_CLASSES_PATH": "yolo_files/coco.names",
+    "TARGET_OBJECTS": "person"
+}
