@@ -25,16 +25,16 @@ frame_producer_instance = None
 def motion_detection_worker(event_queue):
     """Worker function that runs motion detection in a separate thread."""
     global detector_instance, frame_producer_instance
-    
+
     detector = MotionDetector(
         frame_producer=frame_producer_instance,
         sensitivity=CONFIG.get("SENSITIVITY", 25),
         min_area=CONFIG.get("MIN_AREA", 500),
     )
     detector_instance = detector
-    
+
     print("Motion detector started in background thread")
-    
+
     try:
         for event in detector.run():
             # Put the event in the queue for the main thread to process
@@ -45,26 +45,28 @@ def motion_detection_worker(event_queue):
 
 def main():
     global frame_producer_instance
-    
+
     # Initialize frame producer
     frame_producer = FrameProducer(camera_index=CONFIG.get("CAMERA_INDEX", 0))
     frame_producer.start()
     frame_producer_instance = frame_producer
-    
+
     # Configure the web app to use this frame producer
-    app.config['FRAME_PRODUCER'] = frame_producer
-    
+    app.config["FRAME_PRODUCER"] = frame_producer
+
     # Start web server in a separate thread
     web_host = CONFIG.get("WEB_HOST", "0.0.0.0")
     web_port = CONFIG.get("WEB_PORT", 5000)
-    
+
     def run_web_server():
         print(f"Starting web server at http://{web_host}:{web_port}")
-        socketio.run(app, host=web_host, port=web_port, debug=False, allow_unsafe_werkzeug=True)
-    
+        socketio.run(
+            app, host=web_host, port=web_port, debug=False, allow_unsafe_werkzeug=True
+        )
+
     web_thread = threading.Thread(target=run_web_server, daemon=True)
     web_thread.start()
-    
+
     # wait briefly for first frame to be captured
     time.sleep(0.5)
 
@@ -83,7 +85,7 @@ def main():
         config_path=CONFIG.get("ANALYZER_CONFIG_PATH"),
         classes_path=CONFIG.get("ANALYZER_CLASSES_PATH"),
     )
-    expected_label = CONFIG.get("EXPECTED_LABEL", "cat")
+    expected_label = CONFIG.get("TARGET_OBJECTS")
 
     print("Starting motion detector. Press Ctrl+C to stop.")
     try:
@@ -128,13 +130,19 @@ def main():
                         d.get("confidence"),
                         d.get("box"),
                     )
+
+            # Split expected labels (comma-separated)
+            expected_labels = [label.strip() for label in expected_label.split(",")]
+
             # compute best non-matching confidence
-            non_matching = [d for d in detections if d.get("label") != expected_label]
+            non_matching = [
+                d for d in detections if d.get("label") not in expected_labels
+            ]
             best_non_match_conf = max(
                 (d.get("confidence", 0.0) for d in non_matching), default=0.0
             )
             logger.info("Best non-matching confidence=%.2f", best_non_match_conf)
-            matches = [d for d in detections if d.get("label") == expected_label]
+            matches = [d for d in detections if d.get("label") in expected_labels]
             if matches:
                 # If detector didn't save the frame, save it now
                 logger.info(
@@ -162,11 +170,11 @@ def main():
                     logger.info(
                         "Telegram notifier not configured; skipping notification."
                     )
-                
+
                 # Emit event to web interface
                 web_event = {
-                    'timestamp': event['timestamp'],
-                    'frame_path': frame_path_to_send,
+                    "timestamp": event["timestamp"],
+                    "frame_path": frame_path_to_send,
                 }
                 emit_motion_event(web_event)
             else:
@@ -183,14 +191,12 @@ def main():
                 detector_instance.running = False
             if frame_producer_instance:
                 frame_producer_instance.stop()
-            
+
             # Give threads time to cleanup
             print("Shutdown complete.")
         except Exception:
             pass
-        
 
 
 if __name__ == "__main__":
     main()
-
